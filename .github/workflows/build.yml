@@ -1,24 +1,64 @@
-name: Build APK
+name: Build ROSE APK
+
 on:
   push:
   workflow_dispatch:
+
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - run: tar -xzf rose-android-0_2_0*.gz
-      - uses: actions/setup-java@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract Android project
+        shell: bash
+        run: |
+          set -e
+          mkdir extracted
+
+          archive=$(find . -maxdepth 1 -type f \
+            \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.tgz" \) \
+            | head -n 1)
+
+          if [ -z "$archive" ]; then
+            echo "Source archive not found"
+            exit 1
+          fi
+
+          case "$archive" in
+            *.zip) unzip -q "$archive" -d extracted ;;
+            *) tar -xzf "$archive" -C extracted ;;
+          esac
+
+          project=$(find extracted -name gradlew -type f \
+            -printf '%h\n' | head -n 1)
+
+          if [ -z "$project" ]; then
+            echo "Android project not found"
+            exit 1
+          fi
+
+          echo "PROJECT_DIR=$project" >> "$GITHUB_ENV"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: ''
-      - run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
-      - working-directory: rose-android-0.2.0
-        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
-      - uses: actions/upload-artifact@v4
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: rose-debug-apk
-          path: rose-android-0.2.0/app/build/outputs/apk/debug/*.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
