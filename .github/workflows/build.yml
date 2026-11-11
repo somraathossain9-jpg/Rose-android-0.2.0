@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - run: tar -xzf rose-android-0_2_0*.gz
@@ -12,8 +12,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - run: yes | sdkmanager --licenses > /dev/null || true
-      - run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+      - run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
       - working-directory: rose-android-0.2.0
         run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
