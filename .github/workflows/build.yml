@@ -12,7 +12,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      - run: yes | sdkmanager --licenses > /dev/null || true
       - run: sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
       - working-directory: rose-android-0.2.0
         run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
